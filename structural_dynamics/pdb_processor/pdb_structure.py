@@ -163,8 +163,7 @@ class PDBStructure:
             self.__residues[residue_id] = get_amino(residue_name)
             if residue_id not in self.__bfactor:
                 self.__bfactor[residue_id] = {}
-            if 'bfactor' in item:
-                self.__bfactor[residue_id][atom_name] = item['bfactor'] if 'bfactor' in item else 100
+            self.__bfactor[residue_id][atom_name] = item['bfactor'] if 'bfactor' in item else 100
 
     @property
     def name(self):
@@ -199,7 +198,7 @@ class PDBStructure:
 
     def atom_names(self, residue_id):
         if residue_id in self.__structure:
-            return [ atm for atm in sorted(self.__structure[residue_id].keys(), key=lambda x: self.__structure[residue_id][x]['id'])]
+            return [atm for atm in sorted(self.__structure[residue_id].keys(), key=lambda x: self.__structure[residue_id][x]['id'])]
         return []
 
     def key(self, residue_id):
@@ -212,18 +211,18 @@ class PDBStructure:
             raise Exception('Invalid object type [expects file object]')
         res_ids = self.residue_ids
         for i, r in enumerate(res_ids):
-            for j, aa in enumerate(self.atom_list(r)):
+            for j, aa in enumerate(self.atom_names(r)):
                 line = "ATOM  %5d  %-3s %3s %1s%4d    %8.3f%8.3f%8.3f%6.2f%6.2f " % (self.__structure[r][aa]['id'],
                                                                                      aa,
                                                                                      self.__residues[r],
-                                                                                     'A',
+                                                                                     self.__chain_id,
                                                                                      int(r),
                                                                                      float(self.__structure[r][aa]['x']),
                                                                                      float(self.__structure[r][aa]['y']),
                                                                                      float(self.__structure[r][aa]['z']),
                                                                                      1.0,
                                                                                      float(self.__bfactor[r][aa]))
-            fh.write("%s\n" % line)
+                fh.write("%s\n" % line)
 
     def __len__(self):
         return len(self.__structure)

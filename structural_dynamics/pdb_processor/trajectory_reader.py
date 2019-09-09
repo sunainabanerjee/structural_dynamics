@@ -11,14 +11,14 @@ __version__ = "1.0"
 __all__ = ['read_trajectory_catrace', 'read_pdb']
 
 
-def read_trajectory_catrace(pdbfile):
-    assert os.path.isfile(pdbfile)
-    chain, modelname = None, None
-    pdbname = os.path.basename(pdbfile).split('.')[0]
+def read_trajectory_catrace(pdb_file):
+    assert os.path.isfile(pdb_file)
+    pdbname = os.path.basename(pdb_file).split('.')[0]
+    chain, modelname = None, pdbname
     structures = dict()
     trajectory = list()
 
-    with open(pdbfile, "r") as f:
+    with open(pdb_file, "r") as f:
         for line in f.readlines():
             if line.startswith('MODEL'):
                 assert len(line.split()) == 2
@@ -38,14 +38,14 @@ def read_trajectory_catrace(pdbfile):
                         x = float(line[30:38].strip())
                         y = float(line[38:46].strip())
                         z = float(line[46:54].strip())
-                        resId = int(line[22:26].strip())
-                        resName = line[17:20]
+                        residue_id = int(line[22:26].strip())
+                        residue_name = line[17:20]
 
                         structures[chain].append({'x': x,
                                                   'y': y,
                                                   'z': z,
-                                                  'resid': resId,
-                                                  'resname': resName})
+                                                  'resid': residue_id,
+                                                  'resname': residue_name})
             if line.startswith('ENDMDL') and len(structures) > 0:
                 pair = dict()
                 for chain, seq in structures.items():
@@ -63,13 +63,13 @@ def read_trajectory_catrace(pdbfile):
     return trajectory
 
 
-def read_pdb(pdbfile):
-    assert os.path.isfile(pdbfile)
+def read_pdb(pdb_file):
+    assert os.path.isfile(pdb_file)
     chain, modelname = None, None
-    pdbname = os.path.basename(pdbfile).split('.')[0]
+    pdbname = os.path.basename(pdb_file).split('.')[0]
     structures = dict()
     trajectory = list()
-    with open(pdbfile, "r") as f:
+    with open(pdb_file, "r") as f:
         for line in f.readlines():
             if line.startswith('MODEL'):
                 assert len(line.split()) == 2
@@ -87,21 +87,21 @@ def read_pdb(pdbfile):
                     x = float(line[30:38].strip())
                     y = float(line[38:46].strip())
                     z = float(line[46:54].strip())
-                    resId = int(line[22:26].strip())
-                    resName = line[17:20].strip()
+                    residue_id = int(line[22:26].strip())
+                    residue_name = line[17:20].strip()
                     atom_id = int(line[6:11].strip())
                     atom_name=line[12:16].strip()
-                    bfactor = float(line[60:66].strip())
+                    b_factor = float(line[60:66].strip())
                     if atom_name == "OXT":
                         atom_name = "O"
                     structures[chain].append({'x': x,
                                               'y': y,
                                               'z': z,
-                                              'resid': resId,
-                                              'resname': resName,
+                                              'resid': residue_id,
+                                              'resname': residue_name,
                                               'atomname': atom_name,
                                               'atomid': atom_id,
-                                              'bfactor': bfactor})
+                                              'bfactor': b_factor})
             if (line.startswith('TER') or line.startswith('END')) and len(structures) > 0:
                 pair = dict()
                 for chain, seq in structures.items():
@@ -118,12 +118,3 @@ def read_pdb(pdbfile):
         structures.clear()
     return trajectory
 
-
-if __name__ == "__main__":
-    src_file_path = os.path.dirname(os.path.abspath(__file__))
-    pdbfile = os.path.join(src_file_path, "..", "..", "data", "example.pdb")
-    trajectory = read_pdb(pdbfile)
-    print('Number of snapshots: %d' % len(trajectory))
-    protein_rep1 = '%s' % trajectory[0]['A']
-    protein_rep2 = '%s' % pdb_to_catrace(trajectory[0]['A'])
-    assert protein_rep1 == protein_rep2

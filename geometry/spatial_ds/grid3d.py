@@ -1,6 +1,6 @@
 import numpy as np
 from copy import deepcopy
-from geometry.vector_algebra import *
+from geometry.coordinate import *
 
 
 __all__ = ['Grid3D', 'DistanceCutoff']

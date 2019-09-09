@@ -5,7 +5,7 @@ and also supports their associated property index.
 
 __version__ = 1.0
 
-__all__ = ['AminoAcid', 'get_amino', 'valid_amino_acids']
+__all__ = ['AminoAcid', 'get_amino', 'valid_amino_acids', 'get_vdw_radius']
 
 
 __amino_acids__ = {"A": "ALA", "C": "CYS", "D": "ASP",
@@ -35,12 +35,12 @@ __aa_pI__ =  {"A": 6.00, "C": 5.07, "D": 2.77,
 
 # Average flexibility indices (Bhaskaran-Ponnuswamy, 1988)
 __aa_flexibility__ = {"A": 0.357, "C": 0.346, "D": 0.511,
-                    "E": 0.497, "F": 0.314, "G": 0.544,
-                    "H": 0.323, "I": 0.462, "K": 0.466,
-                    "L": 0.365, "M": 0.295, "N": 0.463,
-                    "P": 0.509, "Q": 0.493, "R": 0.529,
-                    "S": 0.507, "T": 0.444, "V": 0.386,
-                    "W": 0.305, "Y": 0.420}
+                      "E": 0.497, "F": 0.314, "G": 0.544,
+                      "H": 0.323, "I": 0.462, "K": 0.466,
+                      "L": 0.365, "M": 0.295, "N": 0.463,
+                      "P": 0.509, "Q": 0.493, "R": 0.529,
+                      "S": 0.507, "T": 0.444, "V": 0.386,
+                      "W": 0.305, "Y": 0.420}
 
 
 # Propensity to be buried inside (Wertz-Scheraga, 1978)
@@ -90,6 +90,33 @@ __aa_volume__ = {"A":  88.300, "C": 112.400, "D": 110.800,
                  "P": 122.200, "Q": 148.700, "R": 181.200,
                  "S":  88.700, "T": 118.200, "V": 141.400,
                  "W": 227.000, "Y": 193.000}
+
+__atoms__ = {
+    'A': ["C", "CA", "N", "O", "CB"],
+    'C': ["C", "CA", "N", "O", "CB", "SG"],
+    'D': ["C", "CA", "N", "O", "CB", "CG","OD1", "OD2"],
+    'E': ["C", "CA", "N", "O", "CB", "CD", "CG", "OE1", "OE2"],
+    'F': ["C", "CA", "N", "O", "CB", "CD1", "CD2", "CE1", "CE2", "CG", "CZ"],
+    'G': ["C", "CA", "N", "O"],
+    'H': ["C", "CA", "N", "O", "CB", "CD2", "CE1", "CG", "ND1", "NE2"],
+    'I': ["C", "CA", "N", "O","CB", "CD1", "CG1", "CG2"],
+    'K': ["C", "CA", "N", "O", "CB", "CD", "CE", "CG", "NZ"],
+    'L': ["C", "CA", "N", "O", "CB", "CD1", "CD2", "CG"],
+    'M': ["C", "CA", "N", "O", "CB", "CE", "CG", "SD"],
+    'N': ["C", "CA", "N", "O", "CB", "CG", "ND2", "OD1"],
+    'P': ["C", "CA", "N", "O", "CB", "CD", "CG"],
+    'Q': ["C", "CA", "N", "O", "CB", "CD", "CG", "NE2", "OE1"],
+    'R': ["C", "CA", "N", "O", "CB", "CD", "CG", "CZ", "NE", "NH1", "NH2"],
+    'S': ["C", "CA", "N", "O", "CB", "OG"],
+    'T': ["C", "CA", "N", "O", "CB", "CG2", "OG1"],
+    'V': ["C", "CA", "N", "O", "CB", "CG1", "CG2"],
+    'W': ["C", "CA", "N", "O", "CB", "CD1", "CD2", "CE2", "CE3", "CG", "CH2", "CZ2", "CZ3", "NE1"],
+    'Y': ["C", "CA", "N", "O", "CB", "CD1", "CD2", "CE1", "CE2", "CG", "CZ", "OH"]
+    }
+
+
+__vdw_radius__ = {'C': 1.70, 'N': 1.55, 'O': 1.52,
+                  'H': 1.09, 'S': 1.80, 'F': 1.47}
 
 
 def valid_amino_acids(one_letter=True):
@@ -145,6 +172,9 @@ class AminoAcid():
     def pIsoelectric(self):
         return __aa_pI__[self.__aa]
 
+    def atom_names(self):
+        return __atoms__[self.__aa].copy()
+
 
 def get_amino(amino_name):
     assert isinstance(amino_name, str)
@@ -159,3 +189,9 @@ def get_amino(amino_name):
         return AminoAcid(aa_type=amino_name)
     raise KeyError("Invalid amino name: %s" % amino_name)
 
+
+def get_vdw_radius(atom_name):
+    assert isinstance(atom_name, str)
+    atom_name = atom_name.strip()
+    assert atom_name[0] in __vdw_radius__.keys()
+    return __vdw_radius__[atom_name[0]]
