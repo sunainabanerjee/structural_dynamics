@@ -15,6 +15,9 @@ class Coordinate3d:
     def __str__(self):
         return '(%8.3f, %8.3f, %8.3f)' % (self._x, self._y, self._z)
 
+    def __len__(self):
+        return 3
+
     @property
     def x(self):
         return self._x
@@ -28,31 +31,33 @@ class Coordinate3d:
         return self._z
 
     def __getitem__(self, item):
-        assert (item in {0, 1, 2}) or (item in {'x', 'y', 'z'})
         if (item == 0) or (item == 'x'):
             return self._x
         elif (item == 1) or (item == 'y'):
             return self._y
-        else:
+        elif (item == 2) or (item == 'z'):
             return self._z
+        raise IndexError("Invalid index [%s]" % item)
 
     def __setitem__(self, key, value):
-        assert (key in {0, 1, 2}) or (key in {'x', 'y', 'z'})
-        assert isinstance(value, np.float)
+        value = float(value)
         if (key == 0) or (key == 'x'):
             self._x = value
         elif (key == 1) or (key == 'y'):
             self._y = value
-        else:
+        elif (key == 2) or (key == 'z'):
             self._z = value
+        else:
+            raise IndexError("Invalid index [%s]" % key)
 
 
-def distance(coord1, coord2):
-    if isinstance(coord1, Coordinate3d) and isinstance(coord2, Coordinate3d):
-        return np.sqrt((coord1.x - coord2.x)**2 +
-                       (coord1.y - coord2.y)**2 +
-                       (coord1.z - coord2.z)**2)
-    return -1
+def distance(c1, c2):
+    assert isinstance(c1, Coordinate3d) or (len(c1) == 3)
+    assert isinstance(c2, Coordinate3d) or (len(c2) == 3)
+    s = 0
+    for i in range(len(c1)):
+        s += (c1[i] - c2[i])**2
+    return np.sqrt(s)
 
 
 def minimum_bound(coordinates):
@@ -91,7 +96,6 @@ def cartesian_to_spherical(x, y, z):
 
 
 def spherical_to_cartesian(r, theta, phi):
-    x, y, z = 0, 0, 0
     x = r * math.sin(theta) * math.cos(phi)
     y = r * math.sin(theta) * math.sin(phi)
     z = r * math.cos(theta)

@@ -94,12 +94,12 @@ __aa_volume__ = {"A":  88.300, "C": 112.400, "D": 110.800,
 __atoms__ = {
     'A': ["C", "CA", "N", "O", "CB"],
     'C': ["C", "CA", "N", "O", "CB", "SG"],
-    'D': ["C", "CA", "N", "O", "CB", "CG","OD1", "OD2"],
+    'D': ["C", "CA", "N", "O", "CB", "CG", "OD1", "OD2"],
     'E': ["C", "CA", "N", "O", "CB", "CD", "CG", "OE1", "OE2"],
     'F': ["C", "CA", "N", "O", "CB", "CD1", "CD2", "CE1", "CE2", "CG", "CZ"],
     'G': ["C", "CA", "N", "O"],
     'H': ["C", "CA", "N", "O", "CB", "CD2", "CE1", "CG", "ND1", "NE2"],
-    'I': ["C", "CA", "N", "O","CB", "CD1", "CG1", "CG2"],
+    'I': ["C", "CA", "N", "O", "CB", "CD1", "CG1", "CG2"],
     'K': ["C", "CA", "N", "O", "CB", "CD", "CE", "CG", "NZ"],
     'L': ["C", "CA", "N", "O", "CB", "CD1", "CD2", "CG"],
     'M': ["C", "CA", "N", "O", "CB", "CE", "CG", "SD"],
@@ -174,6 +174,9 @@ class AminoAcid():
 
     def atom_names(self):
         return __atoms__[self.__aa].copy()
+
+    def charge_atoms(self):
+        return [aa for aa in self.atom_names() if aa[0] in {'N', 'O', 'S'}]
 
 
 def get_amino(amino_name):

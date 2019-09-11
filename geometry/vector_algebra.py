@@ -3,17 +3,15 @@ from .coordinate import *
 
 __version__ = "1.0"
 __all__ = ['Vector3d', 'dotp', 'crossp',
-           'connecting_vector', 'point_vector']
+           'connecting_vector', 'point_vector',
+           'plane_vector']
 
 
 class Vector3d:
     def __init__(self, x, y, z):
-        assert isinstance(x, np.float)
-        assert isinstance(y, np.float)
-        assert isinstance(z, np.float)
-        self._x = x
-        self._y = y
-        self._z = z
+        self._x = float(x)
+        self._y = float(y)
+        self._z = float(z)
 
     @property
     def norm(self):
@@ -22,8 +20,10 @@ class Vector3d:
     @property
     def unit_vector(self):
         n = self.norm
-        if n > 1e-3:
-            return Vector3d( self._x/n , self._y/n, self._z/n)
+        if n > 1e-5:
+            return Vector3d(self._x/n, self._y/n, self._z/n)
+        else:
+            return Vector3d(self._x, self._y, self._z)
 
     @property
     def x(self):
@@ -37,35 +37,64 @@ class Vector3d:
     def z(self):
         return self._z
 
+    def __getitem__(self, item):
+        if item == 'x' or item == 0:
+            return self._x
+        elif item == 'y' or item == 1:
+            return self._y
+        elif item == 'z' or item == 2:
+            return self._z
+        raise IndexError("Improper index [%s]" % item)
+
+    def __setitem__(self, key, value):
+        if key == 'x' or key == 0:
+            self._x = float(value)
+        elif key == 'y' or key == 1:
+            self._y = float(value)
+        elif key == 'z' or key == 2:
+            self._z = float(value)
+
     def tolist(self):
         return [self._x, self._y, self._z]
 
     def toarray(self):
-        return np.array(self.tolist())
+        return np.array(self.tolist(), dtype=np.float)
+
+    def __len__(self):
+        return 3
 
     def __add__(self, other):
         if isinstance(other, Vector3d):
-            return Vector3d(self._x + other.x, self._y + other.y, self._z + other.z)
+            return Vector3d(self.x + other.x, self.y + other.y, self.z + other.z)
         elif (isinstance(other, list) or isinstance(other, np.array)) and len(other) == 3 and other.dtype == np.float:
-            return Vector3d(self._x + other[0], self._y + other[1], self._z + other[2])
+            return Vector3d(self.x + other[0], self.y + other[1], self.z + other[2])
         elif isinstance(other, np.float) or isinstance(other, np.int) or isinstance(other, np.double):
-            return Vector3d(self._x + other, self._y + other, self._z + other)
+            return Vector3d(self.x + other, self.y + other, self.z + other)
         raise Exception("Unsupported addition request")
 
     def __sub__(self, other):
         if isinstance(other, Vector3d):
-            return Vector3d(self._x - other.x, self._y - other.y, self._z - other.z)
-        elif (isinstance(other, list) or isinstance(other, np.array)) and len(other) == 3 and other.dtype == np.float:
-            return Vector3d(self._x - other[0], self._y - other[1], self._z - other[2])
+            return Vector3d(self.x - other.x, self.y - other.y, self.z - other.z)
+        elif (isinstance(other, list) or isinstance(other, np.array)) and len(other) == 3:
+            return Vector3d(self.x - other[0], self.y - other[1], self.z - other[2])
         elif isinstance(other, np.float) or isinstance(other, np.int) or isinstance(other, np.double):
-            return Vector3d(self._x - other, self._y - other, self._z - other)
+            return Vector3d(self.x - other, self.y - other, self.z - other)
         raise Exception("Unsupported substraction request")
+
+    def __mul__(self, other):
+        return Vector3d(self.x * other, self.y * other, self.z * other)
+
+    def __str__(self):
+        return "%.5fi + %.5fj + %.5fk" % (self.x, self.y, self.z)
 
 
 def dotp(v1, v2):
-    if isinstance(v1, Vector3d) and isinstance(v2, Vector3d):
-        return (v1.x * v2.x) + (v1.y * v2.y) + (v1.z * v2.z)
-    return None
+    assert isinstance(v1, Vector3d) or (len(v1) > 0)
+    assert isinstance(v2, Vector3d) or (len(v2) == len(v1))
+    s = 0.0
+    for i in range(len(v1)):
+        s = s + v1[i] * v2[i]
+    return s
 
 
 def crossp(v1, v2):
@@ -76,15 +105,19 @@ def crossp(v1, v2):
 
 
 def connecting_vector(src, dst):
-    assert isinstance(src, Coordinate3d) and isinstance(dst, Coordinate3d)
-    return Vector3d(dst.x - src.x, dst.y - src.y, dst.z - src.z)
+    assert isinstance(src, Coordinate3d) or len(src) == 3
+    assert isinstance(dst, Coordinate3d) or len(dst) == 3
+    return Vector3d(dst[0] - src[0], dst[1] - src[1], dst[2] - src[2])
 
 
 def point_vector(crd):
     return Vector3d(crd.x, crd.y, crd.z)
 
 
-
-
-
-
+def plane_vector(crd1, crd2, crd3):
+    assert isinstance(crd1, Coordinate3d) or len(crd1) == 3
+    assert isinstance(crd2, Coordinate3d) or len(crd2) == 3
+    assert isinstance(crd3, Coordinate3d) or len(crd3) == 3
+    v1 = connecting_vector(crd1, crd2).unit_vector
+    v2 = connecting_vector(crd3, crd2).unit_vector
+    return crossp(v1, v2).unit_vector
