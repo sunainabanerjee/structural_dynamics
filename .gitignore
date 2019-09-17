@@ -5,3 +5,9 @@ __pycache__
 *.png
 *.xml
 *.iml
+*.dat
+*.h5
+*.R
+*.pdb
+.Rhistory
+.RData

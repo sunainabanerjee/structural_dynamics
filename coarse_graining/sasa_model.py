@@ -1,8 +1,13 @@
 import os
 import json
+import numpy as np
+from regressor import *
+from .generate_signature import *
+from structural_dynamics import *
 
 __version__ = "1.0"
-__all__ = ['SASAJsonFields', 'load_freesasa_json', 'filtered_sasa']
+__all__ = ['SASAJsonFields', 'load_freesasa_json',
+           'filtered_sasa', 'SASAPredictor']
 
 
 class SASAJsonFields:
@@ -90,4 +95,47 @@ def filtered_sasa(json_files, amino, area_type=None):
         if len(file_data) > 0:
             report[i] = file_data
     return report
+
+
+class SASAPredictor:
+    def __init__(self,
+                 model_folder,
+                 format_str="{}_sasa.{}",
+                 model_type='xgb'):
+        assert os.path.isdir(model_folder)
+        assert isinstance(format_str, str)
+        assert model_type in {'xgb', 'mlp'}
+        ext = 'h5' if model_type == 'mlp' else 'dat'
+        aminos = [get_amino(aa) for aa in valid_amino_acids()]
+        self.__models = {}
+        for aa in aminos:
+            n = aa.name(one_letter_code=False)
+            model_file = os.path.join(model_folder, format_str.format(n.lower(), ext))
+            assert os.path.isfile(model_file)
+            if model_type == 'mlp':
+                self.__models[n] = MLP()
+            elif model_type == 'xgb':
+                self.__models[n] = XGBoost()
+            self.__models[n].load(model_path=model_file)
+
+    def predict_sasa(self, ca_trace, resids):
+        assert isinstance(ca_trace, CaTrace)
+        assert isinstance(resids, list)
+        all_residues = ca_trace.residue_ids
+        resids = [r for r in resids if r in all_residues]
+        resids = [r for r in resids
+                  if (all_residues.index(r) > 0) and
+                  (all_residues.index(r) < len(all_residues)-1)]
+        if len(resids) > 0:
+            sig = cg_neighbor_signature(ca_trace, resids)
+            sasa = []
+            for i, r in enumerate(resids):
+                aa = ca_trace.get_amino(r).name(one_letter_code=False)
+                n = len(sig[i])
+                p = self.__models[aa].predict(np.array(sig[i]).reshape((1, n)))[0]
+                sasa.append(p)
+            return resids, sasa
+
+
+
 

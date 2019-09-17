@@ -158,10 +158,13 @@ class FFManager:
             FFManager.__instance = FFManager.ProteinFF()
 
     def is_valid_residue(self, residue_name):
-        return FFManager.__instance.is_valid_residue(residue_name)
+        return self.__instance.is_valid_residue(residue_name)
+
+    def get_charge(self, residue_name, atom_name):
+        return self.__instance.get_charge(residue_name, atom_name)
 
     def is_valid_atom(self, residue_name, atom_name):
-        return FFManager.__instance.is_valid_atom(residue_name, atom_name)
+        return self.__instance.is_valid_atom(residue_name, atom_name)
 
     @property
     def residue_names(self):

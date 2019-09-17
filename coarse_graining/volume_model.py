@@ -1,11 +1,16 @@
+import os
 import logging
 import numpy as np
 from geometry import *
+from regressor import *
+from .generate_signature import *
 from .sidechain_model import *
 from structural_dynamics import *
 
 __version__ = "1.0"
-__all__ = ['Volume3D', 'VolumeSignatureGrid']
+__all__ = ['Volume3D',
+           'VolumeSignatureGrid',
+           'ResidueVolumeModels']
 
 
 class VolumeSignatureGrid:
@@ -17,6 +22,14 @@ class VolumeSignatureGrid:
     def dim():
         return 5, 5, 5
 
+    @staticmethod
+    def cell_volume():
+        return 3.8**3
+
+    @staticmethod
+    def length():
+        return 5**3
+
 
 class Volume3D:
     def __init__(self,
@@ -26,7 +39,7 @@ class Volume3D:
         assert isinstance(size, np.int) or len(size) == 3
         assert isinstance(dim, np.int) or len(dim) == 3
         assert isinstance(center, Coordinate3d) or len(center) == 3
-        if isinstance(size, np.int):
+        if isinstance(size, np.float):
             self.__sx, self.__sy, self.__sz = size, size, size
         else:
             self.__sx, self.__sy, self.__sz = size[0], size[1], size[2]
@@ -154,7 +167,10 @@ class Volume3D:
             gz = int((crd[2] - self.z_min) // self.__sz)
         return gx, gy, gz
 
-    def cell_center(self, gx, gy, gz):
+    def cell_center(self, gx, gy=None, gz=None):
+        if gy is None:
+            assert (gx < self.length) and (gx >= 0)
+            gx, gy, gz = self.to_grid_coordinate(gx)
         assert (gx >= 0) and (gx < self.__nx)
         assert (gy >= 0) and (gy < self.__ny)
         assert (gz >= 0) and (gz < self.__nz)
@@ -237,5 +253,52 @@ class Volume3D:
                     r = get_vdw_radius(atoms[i])
                     self.add_volume(xyz[i, :], sphere_volume(r))
         return self.__vfrac
+
+
+class ResidueVolumeModels:
+    def __init__(self, amino, model_directory, model_type='mlp'):
+        assert isinstance(amino, AminoAcid)
+        assert os.path.isdir(model_directory)
+        assert model_type in {'mlp', 'xgb'}
+        amino_name = amino.name(one_letter_code=False).lower()
+        ext = 'h5' if model_type == 'mlp' else 'dat'
+        model_file = os.path.join(model_directory,
+                                  '%s_volume.%s' % (amino_name, ext))
+        assert os.path.isfile(model_file)
+        if model_type == 'mlp':
+            self.__model = MLP()
+        else:
+            self.__model = XGBoost()
+        self.__model.load(model_file)
+        self.__amino = amino
+
+    @property
+    def model(self):
+        return self.__model
+
+    def get_volume(self, ca_trace, residue_ids):
+        assert isinstance(ca_trace, CaTrace)
+        assert isinstance(residue_ids, list)
+        for r in residue_ids:
+            assert r in ca_trace.residue_ids
+            assert ca_trace.get_amino(r) == self.__amino
+        signatures = np.array(cg_neighbor_signature(ca_trace, residues=residue_ids))
+        preds = np.array(self.__model.predict(signatures))
+        grid = Volume3D(size=VolumeSignatureGrid.size(),
+                        dim=VolumeSignatureGrid.dim())
+        reconstruction = []
+        for i, r in enumerate(residue_ids):
+            m, v = placement_matrix(ca_trace, r)
+            coordinates, vol = list(), list()
+            for j in range(preds.shape[1]):
+                if preds[i, j] >= 0.02:
+                    coordinates.append(grid.cell_center(j))
+                    vol.append(preds[i, j] * VolumeSignatureGrid.cell_volume())
+            coordinates = np.matmul(m, np.array(coordinates).transpose()).transpose()
+            coordinates = coordinates + v.toarray()
+            reconstruction.append((coordinates, vol))
+        return reconstruction
+
+
 
 

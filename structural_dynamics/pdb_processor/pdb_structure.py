@@ -156,10 +156,12 @@ class PDBStructure:
             if not ff.is_valid_atom(residue_name, atom_name):
                 logger.warning('Invalid atom pair (%s, %s) ignoring!!' % (residue_name, atom_name))
                 continue
+            charge = ff.get_charge(residue_name, atom_name) if 'q' not in item else item['q']
             self.__structure[residue_id][atom_name] = {'x': item['x'],
                                                        'y': item['y'],
                                                        'z': item['z'],
-                                                       'id': atom_id}
+                                                       'id': atom_id,
+                                                       'q': charge}
             self.__residues[residue_id] = get_amino(residue_name)
             if residue_id not in self.__bfactor:
                 self.__bfactor[residue_id] = {}
@@ -200,6 +202,10 @@ class PDBStructure:
         if residue_id in self.__structure:
             return [atm for atm in sorted(self.__structure[residue_id].keys(), key=lambda x: self.__structure[residue_id][x]['id'])]
         return []
+
+    def charge(self, residue_id, atm):
+        if (residue_id in self.__structure) and (atm in self.__structure[residue_id]):
+            return self.__structure[residue_id][atm]['q']
 
     def key(self, residue_id):
         if residue_id in self.__residues:
