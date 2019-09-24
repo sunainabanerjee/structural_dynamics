@@ -4,7 +4,6 @@ import logging
 import argparse
 import numpy as np
 import regressor as reg
-import keras.backend as K
 
 
 def absolute_sum_error(y_true, y_pred):
@@ -44,6 +43,11 @@ if __name__ == "__main__":
                         type=int, required=False, default=73,
                         help="Random number seed (default: 73)")
 
+    parser.add_argument('--model-type', action='store', dest='model_type',
+                        choices=['xgb', 'mlp'], default='mlp', type=str,
+                        required=False,
+                        help='specify the model type')
+
     args = parser.parse_args()
 
     if not os.path.isfile(args.in_csv):
@@ -71,18 +75,25 @@ if __name__ == "__main__":
     logger.info('starting the training process!!')
     np.random.seed(args.seed)
 
-    model = reg.MLP(epochs=args.nepoch,
-                    batch_size=args.batch_size)
-    model.set_learning_rate(0.0001)
-    model.set_input_shape(f)
-    model.set_output_shape(rg_dim, activation=reg.Activations.relu())
-    model.add_layers(12, layer_type=reg.MLPLayerType.dense(), activation=reg.Activations.relu())
-    model.add_layers(8, layer_type=reg.MLPLayerType.dense(), activation=reg.Activations.relu())
-    model.add_layers(4, layer_type=reg.MLPLayerType.dense(), activation=reg.Activations.relu())
-    model.set_model()
+    if args.model_type == 'mlp':
+        model = reg.MLP(epochs=args.nepoch,
+                        batch_size=args.batch_size)
+        model.set_learning_rate(0.0001)
+        model.set_input_shape(f)
+        model.set_output_shape(rg_dim, activation=reg.Activations.relu())
+        model.add_layers(12, layer_type=reg.MLPLayerType.dense(), activation=reg.Activations.relu())
+        model.add_layers(8, layer_type=reg.MLPLayerType.dense(), activation=reg.Activations.relu())
+        model.add_layers(4, layer_type=reg.MLPLayerType.dense(), activation=reg.Activations.relu())
+        model.set_model()
+    else:
+        model = reg.XGBoost()
     acc = model.fit(x, y)
+    print("Accuracy attained : %.3f" % acc)
     model.save(args.model_out)
-    if (args.history_file is not None) and (os.path.isdir(os.path.dirname(args.history_file))):
+
+    if (args.model_type == 'mlp') and \
+            (args.history_file is not None) and \
+            (os.path.isdir(os.path.dirname(args.history_file))):
         history = model.train_history
         with open(args.history_file, 'w') as fp:
             json.dump(history, fp, indent=2)

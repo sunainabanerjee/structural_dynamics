@@ -13,7 +13,8 @@ __all__ = ['check_missing_atoms',
            'place_atoms',
            'aligned_coordinates',
            'list_aligned_coordinates',
-           'filter_complete_residues']
+           'filter_complete_residues',
+           'BatchSideChainConfigHandler']
 
 
 def check_missing_atoms(pdb, resid):
@@ -84,7 +85,6 @@ def place_atoms(ca_trace, model, amino):
         atoms = amino.atom_names()
         signature = np.array(cg_neighbor_signature(ca_trace, amino_residues))
         result = model.predict(signature)
-        print(result)
         n, w = result.shape
         for i in range(n):
             j = 0
@@ -138,4 +138,29 @@ def list_aligned_coordinates(pdb, residue_ids):
 def filter_complete_residues(pdb, residue_ids):
     assert isinstance(pdb, PDBStructure)
     return [r for r in residue_ids if not check_missing_atoms(pdb, r)]
+
+
+class BatchSideChainConfigHandler:
+    def __init__(self, ca_trace):
+        assert isinstance(ca_trace, CaTrace)
+        self.__ca_trace = ca_trace
+        self.__residues = ca_trace.residue_ids
+        self.__xyz = np.array([[*self.__ca_trace.xyz(r)] for r in self.__residues])
+        u = self.__unit_vector(self.__xyz[1:-1, :] - self.__xyz[:-2, :])
+        v = self.__unit_vector(self.__xyz[1:-1, :] - self.__xyz[2:, :])
+        self.__x_axis = self.__unit_vector(u + v)
+        self.__y_axis = self.__unit_vector(np.cross(u, v))
+        self.__z_axis = self.__unit_vector(np.cross(self.__x_axis, self.__y_axis))
+
+    @staticmethod
+    def __unit_vector(u):
+        assert len(u.shape) == 2
+        return (u.transpose()/np.sqrt(np.sum(np.square(u), axis=1))).transpose()
+
+    def placement_matrix(self, res_id):
+        n = self.__residues.index(res_id)
+        assert (n > 0) and (n < len(self.__residues)-1)
+        return np.array([self.__x_axis[n-1, :],
+                         self.__y_axis[n-1, :],
+                         self.__z_axis[n-1, :]]).transpose(), point_vector(Coordinate3d(*self.__xyz[n]))
 

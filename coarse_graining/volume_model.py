@@ -10,7 +10,7 @@ from structural_dynamics import *
 __version__ = "1.0"
 __all__ = ['Volume3D',
            'VolumeSignatureGrid',
-           'ResidueVolumeModels']
+           'VolumePredictor']
 
 
 class VolumeSignatureGrid:
@@ -255,48 +255,61 @@ class Volume3D:
         return self.__vfrac
 
 
-class ResidueVolumeModels:
-    def __init__(self, amino, model_directory, model_type='mlp'):
-        assert isinstance(amino, AminoAcid)
-        assert os.path.isdir(model_directory)
-        assert model_type in {'mlp', 'xgb'}
-        amino_name = amino.name(one_letter_code=False).lower()
+class VolumePredictor:
+    def __init__(self,
+                 model_folder,
+                 fmt_string = "{}_volume.{}",
+                 model_type='mlp',
+                 min_occupancy=0.05):
+        assert os.path.isdir(model_folder)
+        assert model_type in {'xgb', 'mlp'}
         ext = 'h5' if model_type == 'mlp' else 'dat'
-        model_file = os.path.join(model_directory,
-                                  '%s_volume.%s' % (amino_name, ext))
-        assert os.path.isfile(model_file)
-        if model_type == 'mlp':
-            self.__model = MLP()
-        else:
-            self.__model = XGBoost()
-        self.__model.load(model_file)
-        self.__amino = amino
+        aminos = [get_amino(aa) for aa in valid_amino_acids(one_letter=False)]
+        self.__models = {}
+        self.__min_occupancy = min_occupancy
+        for aa in aminos:
+            name = aa.name(one_letter_code=False)
+            model_file = os.path.join(model_folder,
+                                      fmt_string.format(name.lower(), ext))
+            assert os.path.isfile(model_file)
+            if model_type == 'xgb':
+                self.__models[name] = XGBoost()
+            elif model_type == 'mlp':
+                self.__models[name] = MLP()
+            self.__models[name].load(model_file)
 
-    @property
-    def model(self):
-        return self.__model
-
-    def get_volume(self, ca_trace, residue_ids):
+    def predict_volume(self, ca_trace, residue_ids):
         assert isinstance(ca_trace, CaTrace)
         assert isinstance(residue_ids, list)
-        for r in residue_ids:
-            assert r in ca_trace.residue_ids
-            assert ca_trace.get_amino(r) == self.__amino
+        all_residues = ca_trace.residue_ids
+        residue_ids = [r for r in residue_ids if r in all_residues]
         signatures = np.array(cg_neighbor_signature(ca_trace, residues=residue_ids))
-        preds = np.array(self.__model.predict(signatures))
+        grouped_signatures, grouped_resids = {}, {}
+        for i, r in enumerate(residue_ids):
+            aa = ca_trace.get_amino(r).name(one_letter_code=False)
+            if aa not in grouped_signatures:
+                grouped_signatures[aa] = []
+                grouped_resids[aa] = []
+            grouped_signatures[aa].append(signatures[i])
+            grouped_resids[aa].append(r)
         grid = Volume3D(size=VolumeSignatureGrid.size(),
                         dim=VolumeSignatureGrid.dim())
         reconstruction = []
-        for i, r in enumerate(residue_ids):
-            m, v = placement_matrix(ca_trace, r)
-            coordinates, vol = list(), list()
-            for j in range(preds.shape[1]):
-                if preds[i, j] >= 0.02:
-                    coordinates.append(grid.cell_center(j))
-                    vol.append(preds[i, j] * VolumeSignatureGrid.cell_volume())
-            coordinates = np.matmul(m, np.array(coordinates).transpose()).transpose()
-            coordinates = coordinates + v.toarray()
-            reconstruction.append((coordinates, vol))
+        for aa in grouped_signatures.keys():
+            preds = self.__models[aa].predict(np.array(grouped_signatures[aa],
+                                                       dtype=np.float))
+            res_lst = grouped_resids[aa]
+            for i, r in enumerate(res_lst):
+                m, v = placement_matrix(ca_trace, r)
+                coordinates, vol = list(), list()
+                for j in range(preds.shape[1]):
+                    if preds[i, j] >= self.__min_occupancy:
+                        coordinates.append(grid.cell_center(j))
+                        vol.append(preds[i, j] * VolumeSignatureGrid.cell_volume())
+                coordinates = np.matmul(m, np.array(coordinates).transpose()).transpose()
+                coordinates = coordinates + v.toarray()
+                reconstruction.append((r, coordinates, vol))
+        reconstruction.sort(key=lambda x: x[0])
         return reconstruction
 
 

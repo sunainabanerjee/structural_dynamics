@@ -1,6 +1,4 @@
 import os
-import math
-import pandas as pd
 from geometry import *
 from structural_dynamics import *
 

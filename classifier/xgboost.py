@@ -1,37 +1,41 @@
 import os
 import logging
-import numpy as np
 import pickle
+import numpy as np
 import xgboost as xgb
-from .regressor import Regressor
 from .utility import *
+from .classifier import Classifier
 from sklearn.model_selection import train_test_split
-from sklearn.metrics import mean_absolute_error
-from sklearn.multioutput import  MultiOutputRegressor
+
 
 __version__ = "1.0"
 __all__ = ['XGBoost']
 
 
-class XGBoost(Regressor):
+class XGBoost(Classifier):
     def __init__(self,
-                 booster='dart',
+                 booster=XGBooster.dart(),
                  nthread=3,
                  max_depth=6,
                  n_estimators=200,
-                 objective=LossFunction.squared()):
+                 n_class=2,
+                 objective=LossFunction.softprob()):
         assert booster in XGBooster.supported_list()
         assert objective in LossFunction.supported_list(filter='xgb')
         assert (nthread > 1) and (max_depth > 1)
+        assert n_class >= 2
+        if objective == LossFunction.binary():
+            assert n_class == 2
         assert n_estimators > 10
         self.__name = 'xgb'
         self.__input_dim = None
         self.__output_dim = None
         self.__model = None
+        self.__n_class = int(n_class)
         self.__booster = booster
         self.__thread = int(nthread)
         self.__objective = objective
-        self.__nestimators = int(n_estimators)
+        self.__n_estimators = int(n_estimators)
         self.__max_depth = int(max_depth)
         self.__logger = logging.getLogger(os.path.basename(__file__)[:-3])
 
@@ -44,7 +48,7 @@ class XGBoost(Regressor):
         return self.__input_dim
 
     @property
-    def output_shape(self):
+    def out_classes(self):
         return self.__output_dim
 
     @property
@@ -54,26 +58,23 @@ class XGBoost(Regressor):
     def fit(self, x, y, test_split=0.2):
         assert isinstance(x, np.ndarray) and isinstance(y, np.ndarray)
         assert (test_split > 0) and (test_split <= 0.5)
-        assert (len(x.shape) == 2) and (len(y.shape) == 2)
-        assert (x.shape[0] == y.shape[0]) and (y.shape[1] > 0)
-        if y.shape[1] == 1:
-            self.__model = xgb.XGBRegressor(booster=self.__booster,
-                                            max_depth=self.__max_depth,
-                                            n_estimators=self.__nestimators,
-                                            objective=self.__objective,
-                                            nthread=self.__thread)
-        else:
-            self.__model = MultiOutputRegressor(xgb.XGBRegressor(booster=self.__booster,
-                                                                 max_depth=self.__max_depth,
-                                                                 n_estimators=self.__nestimators,
-                                                                 objective=self.__objective,
-                                                                 nthread=self.__thread))
+        assert (len(x.shape) == 2) and (len(y.shape) == 1)
+        assert (x.shape[0] == y.shape[0])
+        if len(np.unique(y)) != self.__n_class:
+            raise Exception("Improper class definition")
+
+        self.__model = xgb.XGBClassifier(booster=self.__booster,
+                                         max_depth=self.__max_depth,
+                                         n_estimators=self.__n_estimators,
+                                         objective=self.__objective,
+                                         nclass=self.__n_class,
+                                         nthread=self.__thread)
         self.__input_dim = x.shape[1]
-        self.__output_dim = y.shape[1]
+        self.__output_dim = y.shape[0]
         x_train, x_test, y_train, y_test = train_test_split(x, y, test_size=test_split)
         self.__model.fit(x_train, y_train)
-        accuracy = mean_absolute_error(y_test, self.predict(x_test))
-        self.__logger.debug("Prediction Error: %.2f" % accuracy)
+        accuracy = np.sum(y_test == self.predict(x_test))/len(y_test)
+        self.__logger.debug("Accuracy: %.2f" % accuracy)
         return accuracy
 
     def predict(self, x):
@@ -81,6 +82,12 @@ class XGBoost(Regressor):
         assert isinstance(x, np.ndarray)
         assert (len(x.shape) == 2)
         return self.__model.predict(x)
+
+    def predict_proba(self, x):
+        assert self.is_set
+        assert isinstance(x, np.ndarray)
+        assert len(x.shape) == 2
+        return self.__model.predict_proba(x)
 
     def save(self, file_path):
         assert self.is_set
@@ -92,6 +99,5 @@ class XGBoost(Regressor):
     def load(self, model_path):
         assert os.path.isfile(model_path)
         self.__model = pickle.load(open(model_path, "rb"))
-
 
 

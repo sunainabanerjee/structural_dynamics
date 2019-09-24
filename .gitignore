@@ -8,6 +8,7 @@ __pycache__
 *.dat
 *.h5
 *.R
+*.json
 *.pdb
 .Rhistory
 .RData

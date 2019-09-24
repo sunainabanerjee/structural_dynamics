@@ -6,9 +6,9 @@ information in a systematic way.
 """
 
 import logging
+import numpy as np
 from .amino_acids import get_amino
 from structural_dynamics.force_field import FFManager
-
 
 __version__ = "1.0"
 
@@ -23,6 +23,7 @@ class CaTrace:
     with HETATM tag, this class may results in missing residues
     in the trace.
     """
+
     def __init__(self, name, entry, chainId='A'):
         self.__name = name
         self.__bfactor = dict()
@@ -125,6 +126,36 @@ class CaTrace:
             s = s + aa.name(one_letter_code=True)
         return s
 
+    @property
+    def coordinate_min(self):
+        resId = self.residue_ids[0]
+        x, y, z = self.__structure[resId]['x'], \
+                  self.__structure[resId]['y'], \
+                  self.__structure[resId]['z']
+        for r in self.__structure.keys():
+            x = self.__structure[r]['x'] if x > self.__structure[r]['x'] else x
+            y = self.__structure[r]['y'] if y > self.__structure[r]['y'] else y
+            z = self.__structure[r]['z'] if z > self.__structure[r]['z'] else z
+        return x, y, z
+
+    @property
+    def coordinate_max(self):
+        resId = self.residue_ids[0]
+        x, y, z = self.__structure[resId]['x'], \
+                  self.__structure[resId]['y'], \
+                  self.__structure[resId]['z']
+        for r in self.__structure.keys():
+            x = self.__structure[r]['x'] if x < self.__structure[r]['x'] else x
+            y = self.__structure[r]['y'] if y < self.__structure[r]['y'] else y
+            z = self.__structure[r]['z'] if z < self.__structure[r]['z'] else z
+        return x, y, z
+
+    def coordinate_array(self, residue_list=None):
+        if residue_list is None:
+            residue_list = self.residue_ids
+        assert isinstance(residue_list, list) and len(residue_list) > 0
+        return np.array([[*self.xyz(r)] for r in residue_list], dtype=np.float)
+
 
 def do_mutation(ca_trace, res_id, to_residue):
     assert isinstance(ca_trace, CaTrace)
@@ -150,7 +181,8 @@ class PDBStructure:
             assert isinstance(item, dict)
             for k in keys:
                 assert k in item
-            residue_id, residue_name, atom_name, atom_id = item['resid'], item['resname'], item['atomname'], item['atomid']
+            residue_id, residue_name, atom_name, atom_id = item['resid'], item['resname'], item['atomname'], item[
+                'atomid']
             if residue_id not in self.__structure:
                 self.__structure[residue_id] = dict()
             if not ff.is_valid_atom(residue_name, atom_name):
@@ -200,7 +232,8 @@ class PDBStructure:
 
     def atom_names(self, residue_id):
         if residue_id in self.__structure:
-            return [atm for atm in sorted(self.__structure[residue_id].keys(), key=lambda x: self.__structure[residue_id][x]['id'])]
+            return [atm for atm in
+                    sorted(self.__structure[residue_id].keys(), key=lambda x: self.__structure[residue_id][x]['id'])]
         return []
 
     def charge(self, residue_id, atm):
@@ -223,9 +256,12 @@ class PDBStructure:
                                                                                      self.__residues[r],
                                                                                      self.__chain_id,
                                                                                      int(r),
-                                                                                     float(self.__structure[r][aa]['x']),
-                                                                                     float(self.__structure[r][aa]['y']),
-                                                                                     float(self.__structure[r][aa]['z']),
+                                                                                     float(
+                                                                                         self.__structure[r][aa]['x']),
+                                                                                     float(
+                                                                                         self.__structure[r][aa]['y']),
+                                                                                     float(
+                                                                                         self.__structure[r][aa]['z']),
                                                                                      1.0,
                                                                                      float(self.__bfactor[r][aa]))
                 fh.write("%s\n" % line)
@@ -255,6 +291,34 @@ class PDBStructure:
             return self.__bfactor[residue_id][atom_name]
         return None
 
+    @property
+    def coordinate_min(self):
+        resId = self.residue_ids[0]
+        atom = list(self.__structure[resId].keys())[0]
+        x = self.__structure[resId][atom]['x']
+        y = self.__structure[resId][atom]['y']
+        z = self.__structure[resId][atom]['z']
+        for r in self.__structure.keys():
+            for a in self.__structure[r].keys():
+                x = self.__structure[r][a]['x'] if x > self.__structure[r][a]['x'] else x
+                y = self.__structure[r][a]['y'] if y > self.__structure[r][a]['y'] else y
+                z = self.__structure[r][a]['z'] if z > self.__structure[r][a]['z'] else z
+        return x, y, z
+
+    @property
+    def coordinate_max(self):
+        resId = self.residue_ids[0]
+        atom = list(self.__structure[resId].keys())[0]
+        x = self.__structure[resId][atom]['x']
+        y = self.__structure[resId][atom]['y']
+        z = self.__structure[resId][atom]['z']
+        for r in self.__structure.keys():
+            for a in self.__structure[r].keys():
+                x = self.__structure[r][a]['x'] if x < self.__structure[r][a]['x'] else x
+                y = self.__structure[r][a]['y'] if y < self.__structure[r][a]['y'] else y
+                z = self.__structure[r][a]['z'] if z < self.__structure[r][a]['z'] else z
+        return x, y, z
+
 
 def pdb_to_catrace(pdb_struct):
     assert isinstance(pdb_struct, PDBStructure)
@@ -273,5 +337,5 @@ def pdb_to_catrace(pdb_struct):
                         'x': x,
                         'y': y,
                         'z': z,
-                        'bfactor':bfactor})
+                        'bfactor': bfactor})
     return CaTrace(pdb_struct.name, entries, pdb_struct.chain)

@@ -44,6 +44,11 @@ if __name__ == "__main__":
                         type=int, required=False, default=73,
                         help="Random number seed (default: 73)")
 
+    parser.add_argument('--model-type', action='store', dest='model_type',
+                        choices=["mlp", "xgb"], default='mlp', type=str,
+                        required=False,
+                        help="Specify the model type to use.")
+
     args = parser.parse_args()
 
     if not os.path.isfile(args.in_csv):
@@ -71,18 +76,24 @@ if __name__ == "__main__":
     logger.info('starting the training process!!')
     np.random.seed(args.seed)
 
-    model = reg.MLP(epochs=args.nepoch,
-                    batch_size=args.batch_size)
-    model.set_learning_rate(0.0001)
-    model.set_input_shape(f)
-    model.set_output_shape(rg_dim, activation=reg.Activations.sigmoid())
-    model.add_layers(20, layer_type=reg.MLPLayerType.dense(), activation=reg.Activations.relu())
-    model.add_layers(20, layer_type=reg.MLPLayerType.dense(), activation=reg.Activations.relu())
-    model.add_layers(20, layer_type=reg.MLPLayerType.dense(), activation=reg.Activations.relu())
-    model.set_model()
+    if args.model_type == 'mlp':
+        model = reg.MLP(epochs=args.nepoch,
+                        batch_size=args.batch_size)
+        model.set_learning_rate(0.0001)
+        model.set_input_shape(f)
+        model.set_output_shape(rg_dim, activation=reg.Activations.sigmoid())
+        model.add_layers(20, layer_type=reg.MLPLayerType.dense(), activation=reg.Activations.relu())
+        model.add_layers(20, layer_type=reg.MLPLayerType.dense(), activation=reg.Activations.relu())
+        model.add_layers(20, layer_type=reg.MLPLayerType.dense(), activation=reg.Activations.relu())
+        model.set_model()
+    else:
+        model = reg.XGBoost()
     acc = model.fit(x, y)
     model.save(args.model_out)
-    if (args.history_file is not None) and (os.path.isdir(os.path.dirname(args.history_file))):
+    print("Final model accuracy: %.3f" % acc)
+    if (args.model_type == 'mlp') and \
+            (args.history_file is not None) and \
+            (os.path.isdir(os.path.dirname(args.history_file))):
         history = model.train_history
         with open(args.history_file, 'w') as fp:
             json.dump(history, fp, indent=2)

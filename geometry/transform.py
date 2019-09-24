@@ -1,4 +1,5 @@
 import numpy as np
+from copy import deepcopy
 from geometry.vector_algebra import Coordinate3d
 
 __version__ = "1.0"
@@ -12,7 +13,9 @@ def rmsd(V, W):
     return np.sqrt(np.mean(np.square(v - w)))
 
 
-def kabsch_rmsd(x, y, return_matrix=False):
+def kabsch_rmsd(x, y,
+                return_matrix=False,
+                return_coordinate=False):
     assert isinstance(x, np.ndarray)
     assert isinstance(y, np.ndarray)
     assert (len(x.shape) == len(y.shape)) and len(x.shape) == 2
@@ -28,25 +31,38 @@ def kabsch_rmsd(x, y, return_matrix=False):
     U = np.dot(V, W)
     xca = np.matmul(xc, U)
     r = rmsd(xca, yc)
-    if not return_matrix:
+    if (not return_matrix) and (not return_coordinate):
         return r
-    else:
+    elif (not return_matrix) and return_coordinate:
         return r, xca + y.mean(axis=0)
-
-
-def kabsch_coordinate(X1, X2, return_coordinate=False):
-    assert isinstance(X1, list) and isinstance(X2, list)
-    assert len(X1) == len(X2)
-    for i in range(len(X1)):
-        assert isinstance(X1[i], Coordinate3d)
-        assert isinstance(X2[i], Coordinate3d)
-    X1a = np.array([[X1[i].x, X1[i].y, X1[i].z] for i in range(len(X1))])
-    X2a = np.array([[X2[i].x, X2[i].y, X2[i].z] for i in range(len(X2))])
-    if not return_coordinate:
-        return kabsch_rmsd(X1a, X2a,return_matrix=return_coordinate)
+    elif return_matrix and (not return_coordinate):
+        return r, U
     else:
-        d, X1a = kabsch_rmsd(X1a, X2a,return_matrix=return_coordinate)
-        return d, [Coordinate3d(X1a[i,0], X1a[i,1], X1a[i,2]) for i in range(X1a.shape[0])]
+        return r, U, xca + y.mean(axis=0)
+
+
+def kabsch_coordinate(x1, x2, return_matrix=False, return_coordinate=False):
+    if isinstance(x1, list):
+        x1a = np.array([[x1[i][0], x1[i][1], x1[i][2]] for i in range(len(x1))])
+    else:
+        x1a = deepcopy(x1)
+    if isinstance(x2, list):
+        x2a = np.array([[x2[i][0], x2[i][1], x2[i][2]] for i in range(len(x2))])
+    else:
+        x2a = deepcopy(x2)
+
+    assert isinstance(x1a, np.ndarray) and isinstance(x2a, np.ndarray)
+    assert x1a.shape == x2a.shape
+
+    if not return_coordinate:
+        return kabsch_rmsd(x1a, x2a,
+                           return_matrix=return_matrix,
+                           return_coordinate=return_coordinate)
+    else:
+        d, m, x1a = kabsch_rmsd(x1a, x2a,
+                                return_matrix=return_matrix,
+                                return_coordinate=return_coordinate)
+        return d, m, [Coordinate3d(x1a[i, 0], x1a[i, 1], x1a[i, 2]) for i in range(x1a.shape[0])]
 
 
 def rotation_matrix3d(axis_vector, rotation_angle):

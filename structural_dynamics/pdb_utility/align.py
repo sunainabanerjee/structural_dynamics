@@ -1,6 +1,5 @@
 import logging
 import numpy as np
-from multiprocessing.pool import ThreadPool
 from scipy.optimize import linear_sum_assignment
 from structural_dynamics.pdb_processor import CaTrace
 from geometry import Coordinate3d
@@ -13,12 +12,19 @@ __all__ = ['catrace_coordinates', 'catraces_rmsd',
 
 
 def catrace_coordinates(catrace,
-                        order_list=None):
+                        order_list=None,
+                        return_type='coordinate'):
+    assert return_type in {'coordinate', 'list', 'array'}
     assert isinstance(catrace, CaTrace)
     if order_list is None:
         order_list = catrace.residue_ids
     assert isinstance(order_list, list)
-    return [Coordinate3d(*catrace.xyz(r)) for r in order_list]
+    if return_type == 'coordinate':
+        return [Coordinate3d(*catrace.xyz(r)) for r in order_list]
+    elif return_type == 'list':
+        return [[*catrace.xyz(r)] for r in order_list]
+    elif return_type == 'array':
+        return np.array([[*catrace.xyz(r)] for r in order_list], dtype=np.float)
 
 
 def catraces_rmsd(catrace1,

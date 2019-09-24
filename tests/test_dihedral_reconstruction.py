@@ -18,7 +18,4 @@ if __name__ == "__main__":
     pdbfile = os.path.join( os.path.dirname(os.path.abspath(__file__)), 'data', 'structure.pdb')
     assert os.path.isfile(pdbfile)
     pdb = read_pdb(pdbfile)[0]['B']
-    sig = get_atom_position_signature(pdb, get_amino('K'))
-    for aa in sig.keys():
-        print(sig[aa])
 

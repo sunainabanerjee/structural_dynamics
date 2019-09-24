@@ -50,6 +50,16 @@ class Coordinate3d:
         else:
             raise IndexError("Invalid index [%s]" % key)
 
+    def tolist(self):
+        return [self._x, self._y, self._z]
+
+    def toarray(self):
+        return np.array([self._x, self._y, self._z], dtype=np.float)
+
+    @property
+    def values(self):
+        return self._x, self._y, self._z
+
 
 def distance(c1, c2):
     assert isinstance(c1, Coordinate3d) or (len(c1) == 3)

@@ -1,11 +1,31 @@
 import numpy as np
 from geometry import *
 from structural_dynamics import *
+from sklearn.neighbors import NearestNeighbors
 from .cg_properties import CoarseGrainProperty as CG
 from .cg_properties import PropertyCalculator as PC
 
 __version__ = "1.0"
-__all__ = ['find_k_neighbors', 'cg_neighbor_signature']
+__all__ = ['find_k_neighbors', 'find_k_neighbors_fast', 'cg_neighbor_signature']
+
+
+def find_k_neighbors_fast(pdb, residues, k):
+    if isinstance(pdb, PDBStructure):
+        ca_trace = pdb_to_catrace(pdb)
+    else:
+        ca_trace = pdb
+    assert isinstance(ca_trace, CaTrace) and len(ca_trace) > k
+    assert isinstance(residues, list) and k > 0
+    all_residues = ca_trace.residue_ids
+    x = np.array([[*ca_trace.xyz(r)] for r in all_residues])
+    nbrs = NearestNeighbors(n_neighbors=k+1, algorithm="ball_tree").fit(x)
+    nbr_list = {}
+    y = np.array([[*ca_trace.xyz(r)] for r in residues])
+    distances, indices = nbrs.kneighbors(y)
+    for i, r in enumerate(residues):
+        nbr_list[r] = [(all_residues[indices[i, j]],
+                        distances[i, j]) for j in range(1, k+1)]
+    return nbr_list
 
 
 def find_k_neighbors(pdb, residues, k):
@@ -15,6 +35,8 @@ def find_k_neighbors(pdb, residues, k):
         ca_trace = pdb
     assert isinstance(ca_trace, CaTrace) and len(ca_trace) > k
     assert isinstance(residues, list) and k > 0
+    if k > 2:
+        return find_k_neighbors_fast(ca_trace, residues, k)
     all_residues = ca_trace.residue_ids
     for r in residues:
         assert r in all_residues
@@ -65,7 +87,7 @@ def cg_neighbor_signature(pdb,
         for nbr, d in nbr_list[r]:
             props = dict()
             if CG.distance() in properties:
-                props[CG.distance()] = PC.distance(ca_trace, r, nbr)
+                props[CG.distance()] = d
             if CG.angular() in properties:
                 props[CG.angular()] = PC.angular(ca_trace, r, nbr)
             if CG.sasa() in properties:

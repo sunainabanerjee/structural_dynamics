@@ -60,7 +60,7 @@ class PositionPredictor:
     def __init__(self,
                  model_folder,
                  fmt_string="{}_pos.{}",
-                 model_type='mlp'):
+                 model_type='xgb'):
         assert os.path.isdir(model_folder)
         assert model_type in {'mlp', 'xgb'}
         ext = 'h5' if model_type == 'mlp' else 'dat'
@@ -90,7 +90,6 @@ class PositionPredictor:
                 sig = np.array(sig, dtype=np.float).reshape((1, n))
                 diheds = self.__models[aa].predict(sig)[0]
                 counter = 0
-            print(diheds)
             recons.fix(diheds[counter])
             counter += 1
         return recons.get_pdb()

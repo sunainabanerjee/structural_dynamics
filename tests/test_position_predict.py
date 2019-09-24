@@ -11,7 +11,7 @@ if __name__ == "__main__":
     ca_trace = pdb_to_catrace(pdb)
     model_dir = os.path.join(os.path.dirname(__file__), '..', 'scripts', 'pos_models')
     assert os.path.isdir(model_dir)
-    predictor = PositionPredictor(model_folder=model_dir, model_type='mlp')
+    predictor = PositionPredictor(model_folder=model_dir, model_type='xgb')
     pdb = predictor.predict_position(ca_trace)
     outfile = os.path.join(os.path.dirname(__file__), 'out', 'reconstructed.pdb')
     with open(outfile, "w") as fp:

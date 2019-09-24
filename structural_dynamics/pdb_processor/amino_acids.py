@@ -180,6 +180,8 @@ class AminoAcid():
 
 
 def get_amino(amino_name):
+    if isinstance(amino_name, AminoAcid):
+        return amino_name
     assert isinstance(amino_name, str)
     amino_name = amino_name.strip()
     if len(amino_name) == 3:

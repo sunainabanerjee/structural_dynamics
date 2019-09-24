@@ -100,17 +100,17 @@ def filtered_sasa(json_files, amino, area_type=None):
 class SASAPredictor:
     def __init__(self,
                  model_folder,
-                 format_str="{}_sasa.{}",
+                 fmt_string="{}_sasa.{}",
                  model_type='xgb'):
         assert os.path.isdir(model_folder)
-        assert isinstance(format_str, str)
+        assert isinstance(fmt_string, str)
         assert model_type in {'xgb', 'mlp'}
         ext = 'h5' if model_type == 'mlp' else 'dat'
         aminos = [get_amino(aa) for aa in valid_amino_acids()]
         self.__models = {}
         for aa in aminos:
             n = aa.name(one_letter_code=False)
-            model_file = os.path.join(model_folder, format_str.format(n.lower(), ext))
+            model_file = os.path.join(model_folder, fmt_string.format(n.lower(), ext))
             assert os.path.isfile(model_file)
             if model_type == 'mlp':
                 self.__models[n] = MLP()

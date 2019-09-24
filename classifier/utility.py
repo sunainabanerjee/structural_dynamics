@@ -61,29 +61,34 @@ class KernelInitializer():
 
 class LossFunction:
     @staticmethod
-    def mean_squared_error():
-        return 'mean_squared_error'
+    def categorical_crossentropy():
+        return 'categorical_crossentropy'
 
     @staticmethod
-    def squared():
-        return 'reg:squarederror'
+    def sparse_categorical_crossentropy():
+        return 'sparse_categoricalcrossentropy'
 
     @staticmethod
-    def logistic():
-        return 'reg:logistic'
+    def binary_crossentropy():
+        return 'binary_crossentropy'
 
     @staticmethod
-    def squared_log():
-        return 'reg:squaredlogerror'
+    def binary():
+        return 'binary:logistic'
+
+    @staticmethod
+    def softprob():
+        return 'multi:softprob'
 
     @staticmethod
     def supported_list(filter='nn'):
         if filter == 'nn':
-            return [LossFunction.mean_squared_error()]
+            return [LossFunction.categorical_crossentropy(),
+                    LossFunction.sparse_categorical_crossentropy(),
+                    LossFunction.binary_crossentropy()]
         elif filter == 'xgb':
-            return [LossFunction.logistic(),
-                    LossFunction.squared(),
-                    LossFunction.squared_log()]
+            return [LossFunction.binary(),
+                    LossFunction.softprob()]
 
 
 class MLPLayerType:
@@ -110,10 +115,15 @@ class Activations:
         return 'tanh'
 
     @staticmethod
+    def softmax():
+        return 'softmax'
+
+    @staticmethod
     def supported_list():
         return [Activations.relu(),
                 Activations.sigmoid(),
-                Activations.tanh()]
+                Activations.tanh(),
+                Activations.softmax()]
 
 
 class XGBooster:
