@@ -12,8 +12,13 @@ if __name__ == "__main__":
     ref_pdb_file = os.path.join(os.path.dirname(__file__), 'data', 'structure_1a1v.pdb')
     assert os.path.isfile(ref_pdb_file)
     ref_trace = pdb_to_catrace(read_pdb(pdb_file=ref_pdb_file)[0]['A'])
+    """
     max_crd, min_crd = Coordinate3d(31.559, 47.722, 38.290), \
                        Coordinate3d(2.412, 16.718, 18.526)
+    """
+    max_crd, min_crd = Coordinate3d(42.545, 43.137, 30.979), \
+                       Coordinate3d(18.411, 7.175, 4.130)
+
     buffer = 5.0
     for i in range(len(max_crd)):
         max_crd[i] += buffer
@@ -44,7 +49,7 @@ if __name__ == "__main__":
     modes = list(range(7, 25))
     fmt_string = "mode_catraj_{}.pdb"
 
-    out_file = os.path.join( os.path.dirname(__file__), "out", "all_sig_bulk.csv")
+    out_file = os.path.join(os.path.dirname(__file__), "out", "all_sig_rna.csv")
     completed_list = []
     if os.path.isfile(out_file):
         with open(out_file, "r+") as fp:
@@ -56,7 +61,7 @@ if __name__ == "__main__":
         print("Current number of complete list [%d] " % len(completed_list))
         wild_handler.reset()
         mutant_handler.reset()
-        tag = [f for f in os.listdir(run_dir) if len(f.split("_")) == 4]
+        tag = [f for f in os.listdir(run_dir) if f.count("_") > 0]
         assert len(tag) == 1
         if tag[0] in completed_list:
             continue
