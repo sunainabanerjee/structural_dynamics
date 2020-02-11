@@ -141,6 +141,6 @@ class XGBooster:
 
     @staticmethod
     def supported_list():
-        return [XGBooster.gblinear(),
+        return [XGBooster.gbtree(),
                 XGBooster.dart(),
                 XGBooster.gblinear()]

@@ -58,11 +58,11 @@ if __name__ == "__main__":
     logger.info('starting the training process!!')
 
     if args.model_type == 'mlp':
-        model = cg.MLP(epochs=args.nepoch, batch_size=args.batch_size)
+        model = reg.MLP(epochs=args.nepoch, batch_size=args.batch_size)
         model.set_input_shape(w-1)
         model.set_output_shape(1)
+        model.add_layers(20)
         model.add_layers(10)
-        model.add_layers(4)
         model.add_layers(4)
         model.set_model()
         model.summary()

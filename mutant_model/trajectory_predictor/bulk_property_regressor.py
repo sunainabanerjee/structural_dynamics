@@ -28,10 +28,11 @@ class BulkSasaRegressor:
                  model_type="xgb"):
         os.path.isdir(model_folder)
         self.__model = {}
+        self.__min_sasa = 5.0
         ext = "dat" if model_type == 'xgb' else "h5"
         for aa in valid_amino_acids(one_letter=False):
-            model_file = os.path.join( model_folder,
-                                       fmt_string.format(aa.lower(), ext))
+            model_file = os.path.join(model_folder,
+                                      fmt_string.format(aa.lower(), ext))
             assert os.path.isfile(model_file)
             if model_type == 'xgb':
                 self.__model[aa] = XGBoost()
@@ -42,7 +43,7 @@ class BulkSasaRegressor:
     def signature(self, handler):
         assert isinstance(handler, NMATrajectoryHandler)
         gsize = GridPropertyLookup.sasa()
-        lookup_grids = [[LookupGrid(min_crd=handler.min_coorinate,
+        lookup_grids = [[LookupGrid(min_crd=handler.min_coordinate,
                                     max_crd=handler.max_coordinate,
                                     size=gsize,
                                     min_cutoff=0) for j in range(handler.size(i))] for i in range(handler.size())]
@@ -55,7 +56,9 @@ class BulkSasaRegressor:
             pos, idx = handler.xyz(aa)
             assert (len(pos) == len(idx)) and (len(sasa) == len(idx))
             for i, item in enumerate(idx):
-                lookup_grids[item[0]][item[1]].incr(pos[i], sasa[i])
+                sasa_value = np.round(sasa[i], decimals=1)
+                if sasa_value > self.__min_sasa:
+                    lookup_grids[item[0]][item[1]].incr(pos[i], sasa_value)
 
         sig = None
         for i in range(len(lookup_grids)):
@@ -80,8 +83,8 @@ class BulkVolumeRegressor:
         self.__model = {}
         ext = "dat" if model_type == 'xgb' else "h5"
         for aa in valid_amino_acids(one_letter=False):
-            model_file = os.path.join( model_folder,
-                                       fmt_string.format(aa.lower(), ext))
+            model_file = os.path.join(model_folder,
+                                      fmt_string.format(aa.lower(), ext))
             assert os.path.isfile(model_file)
             if model_type == 'xgb':
                 self.__model[aa] = XGBoost()
@@ -93,7 +96,7 @@ class BulkVolumeRegressor:
         assert isinstance(handler, NMATrajectoryHandler)
         gsize = GridPropertyLookup.volume()
         max_vol = gsize**3
-        lookup_grids = [[LookupGrid(min_crd=handler.min_coorinate,
+        lookup_grids = [[LookupGrid(min_crd=handler.min_coordinate,
                                     max_crd=handler.max_coordinate,
                                     size=gsize,
                                     max_cutoff=max_vol,

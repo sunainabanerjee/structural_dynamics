@@ -1,0 +1,27 @@
+D285A
+Class Scores: (0.867, 0.052, 0.081)
+Class Label: -1
+D410A
+Class Scores: (0.588, 0.131, 0.281)
+Class Label: -1
+G199A
+Class Scores: (0.800, 0.087, 0.114)
+Class Label: -1
+H263A
+Class Scores: (0.470, 0.157, 0.373)
+Class Label: -1
+H263K
+Class Scores: (0.781, 0.028, 0.191)
+Class Label: -1
+K200A
+Class Scores: (0.889, 0.043, 0.068)
+Class Label: -1
+K431A
+Class Scores: (0.316, 0.460, 0.223)
+Class Label: 0
+M414A
+Class Scores: (0.704, 0.081, 0.214)
+Class Label: -1
+M414T
+Class Scores: (0.530, 0.137, 0.333)
+Class Label: -1

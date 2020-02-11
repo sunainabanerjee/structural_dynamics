@@ -49,7 +49,7 @@ class SignatureGenerator:
             all_signature[p] = Signature(min_coord=self.__lookup.min_coordinate,
                                          max_coord=self.__lookup.max_coordinate)
             self.__logger.debug("Generating signature for: %s" % p)
-            print("Generating signature for: %s" % p)  #summukhe
+            print("Generating signature for: %s" % p)   # summukhe
             start = time.time()
             self.__eval[p].reset()
             self.__eval[p].add(ca_trace)
@@ -58,7 +58,7 @@ class SignatureGenerator:
             end = time.time()
             etime = (end - start)*1000
             self.__logger.debug("Feature [%s] generation time %.2f ms" % (p, etime))
-            print("Feature [%s] generation time %.2f ms" % (p, etime)) #summukhe
+            print("Feature [%s] generation time %.2f ms" % (p, etime))
         return all_signature
 
 

@@ -16,6 +16,7 @@ def read_bounding_box( filename ):
     with open(filename, 'r+') as fp:
         lines = fp.readlines()
     assert len(lines) > 0
+    max_coordinate, min_coordinate = None, None
     for line in lines:
         flds = line.split(",")
         if (len(flds) == 4) and (flds[0] == "max"):
@@ -24,8 +25,7 @@ def read_bounding_box( filename ):
             min_coordinate = Coordinate3d(float(flds[1]), float(flds[2]), float(flds[3]))
     assert max_coordinate is not None
     assert min_coordinate is not None
-    for i in range(len(max_coordinate)):
-        assert max_coordinate[i] > min_coordinate[i]
+    assert all([max_coordinate[i] > min_coordinate[i] for i in range(len(max_coordinate))])
     return max_coordinate, min_coordinate
 
 
@@ -36,8 +36,21 @@ def extract_trace( pair ):
     return pair[chains[0]]
 
 
+def parse_alignment( file ):
+    assert os.path.isfile(file)
+    with open(file, 'r') as fp:
+        lines = fp.readlines()
+    assert len(lines) > 4
+    residue_map = list()
+    for line in lines:
+        if line.count(',') == 1:
+            residue_map.append(tuple([int(fld) for fld in line.split(',')]))
+    assert len(residue_map) > 4
+    return residue_map
+
+
 if __name__ == "__main__":
-    logging.basicConfig(debug=logging.DEBUG)
+
     logger = logging.getLogger('MAIN')
     parser = argparse.ArgumentParser(description="Utility builds the input for sasa prediction")
 
@@ -53,9 +66,18 @@ if __name__ == "__main__":
                         help="directory containing nma trajectory of the wild and mutant",
                         type=str, required=True)
 
-    parser.add_argument('-buffer', action='store', dest='buffer', default=2.0,
+    parser.add_argument('--buffer', action='store', dest='buffer', default=2.0,
                         help='buffer distance for grid build',
                         type=float, required=False)
+
+    parser.add_argument('--alignment', action='store', dest='align_map',
+                        help="file containing residue correspondence to be used "
+                             "for the alignment with the reference pdb",
+                        type=str, required=False)
+
+    parser.add_argument('--model', action='store', dest='model',
+                        type=str, required=True,
+                        help="xgboost model file for classification")
 
     args = parser.parse_args()
     assert os.path.isfile(args.ref_pdb)
@@ -64,6 +86,7 @@ if __name__ == "__main__":
     assert os.path.isdir(args.traj_dir)
     assert os.path.isdir(os.path.join(args.traj_dir, 'wild'))
     assert os.path.isdir(os.path.join(args.traj_dir, 'mutant'))
+    assert os.path.isfile(args.model)
     trj_dir = os.path.abspath(args.traj_dir)
 
     ref_list = read_pdb(pdb_file=ref_pdb_file)
@@ -77,6 +100,10 @@ if __name__ == "__main__":
     for i in range(len(max_crd)):
         max_crd[i] += args.buffer
         min_crd[i] -= args.buffer
+
+    align_map = None
+    if args.align_map is not None:
+        align_map = parse_alignment(args.align_map)
 
     wild_traj_dir = os.path.join(trj_dir, 'wild')
     mutant_traj_dir = os.path.join(trj_dir, 'mutant')
@@ -102,8 +129,8 @@ if __name__ == "__main__":
         mutant_traj = [extract_trace(pair) for pair in read_trajectory_catrace(mutant_trj_file)]
 
         in_start = time.time()
-        mutant_traj = align_trajectory(ref_trace, mutant_traj[0], mutant_traj, ca_trace=True)
-        wild_traj = align_trajectory(ref_trace, wild_traj[0], wild_traj, ca_trace=True)
+        mutant_traj = align_trajectory(ref_trace, mutant_traj[0], mutant_traj, align_pair=align_map, ca_trace=True)
+        wild_traj = align_trajectory(ref_trace, wild_traj[0], wild_traj, align_pair=align_map, ca_trace=True)
         in_end = time.time()
         logger.debug("Trajectory alignment time: [%.4f s]" % (in_end - in_start))
         print("Trajectory alignment time: [%.4f s]" % (in_end - in_start))
@@ -127,7 +154,7 @@ if __name__ == "__main__":
                         max_depth=4,
                         n_estimators=300,
                         n_class=3)
-    model.load('/home/sumanta/PycharmProjects/structural_dynamics/tests/out/classify.dat')
+    model.load(args.model)
     score = np.array(score).reshape((1, len(score)))
     predicted_proba = model.predict_proba(score)[0]
     predicted_class = model.predict(score)

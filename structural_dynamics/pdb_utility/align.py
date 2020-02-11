@@ -1,20 +1,22 @@
 import logging
 import numpy as np
 from scipy.optimize import linear_sum_assignment
-from structural_dynamics.pdb_processor import CaTrace
+from structural_dynamics.pdb_processor import CaTrace, PDBStructure, pdb_to_catrace
 from geometry import Coordinate3d
 from geometry import kabsch_coordinate
 
 __version__ = "1.0"
 __all__ = ['catrace_coordinates', 'catraces_rmsd',
            'trajectory_alignment_matrix', 'align_trajectories',
-           'mode_alignment']
+           'mode_alignment', 'align_to_xyz']
 
 
 def catrace_coordinates(catrace,
                         order_list=None,
                         return_type='coordinate'):
     assert return_type in {'coordinate', 'list', 'array'}
+    if isinstance(catrace, PDBStructure):
+        catrace = pdb_to_catrace(catrace)
     assert isinstance(catrace, CaTrace)
     if order_list is None:
         order_list = catrace.residue_ids
@@ -31,7 +33,12 @@ def catraces_rmsd(catrace1,
                   catrace2,
                   order_list=None,
                   return_structure=False):
+    if isinstance(catrace1, PDBStructure):
+        catrace1 = pdb_to_catrace(catrace1)
     assert isinstance(catrace1, CaTrace)
+
+    if isinstance(catrace2, PDBStructure):
+        catrace2 = pdb_to_catrace(catrace2)
     assert isinstance(catrace2, CaTrace)
     all_structure = (order_list is None) or \
                     ((len(order_list) == len(catrace1)) and
@@ -172,6 +179,40 @@ def mode_alignment(mode1, mode2, residue_map=None, min_score=1.0):
         return [(x, y) for x, y in zip(row_ind, col_ind) if scores[x][y] < min_score]
     else:
         return []
+
+
+def align_to_xyz(catrace,
+                 residue_list):
+    if isinstance(catrace, PDBStructure):
+        catrace = pdb_to_catrace(catrace)
+    assert isinstance(catrace, CaTrace)
+    assert isinstance(residue_list, list) and len(set(residue_list)) == len(residue_list)
+    if len(residue_list) < 4:
+        raise Exception("Need atleast 4 points to ")
+    all_residues = catrace.residue_ids
+    all_resname = [catrace.get_amino(r).name(one_letter_code=False) for r in all_residues]
+    assert all([r in all_residues for r in residue_list])
+    coordinates = np.array([[*catrace.xyz(r)] for r in residue_list])
+    centroid = np.mean(coordinates, axis=0)
+    coordinates = coordinates - centroid
+    cov_matrix = np.dot(coordinates.T, coordinates) / coordinates.shape[0]
+    eig_val, eig_vec = np.linalg.eig(cov_matrix)
+    if np.linalg.det(eig_vec) < 0:
+        eig_vec[:, 2] = np.cross(eig_vec[:, 0], eig_vec[:, 1])
+    x = catrace_coordinates(catrace, return_type='array')
+    xa = np.dot(x - centroid, eig_vec)
+    assert x.shape[0] == len(all_residues)
+    items = [{'resid': r,
+              'resname': all_resname[i],
+              'x': xa[i, 0],
+              'y': xa[i, 1],
+              'z': xa[i, 2],
+              'bfactor': catrace.b_factor(r)} for i, r in enumerate(all_residues)]
+    aligned_catrace = CaTrace(name=catrace.name, entry=items, chainId=catrace.chain)
+    pkt_xyz = np.array([[*aligned_catrace.xyz(r)] for r in residue_list])
+    max_bound = Coordinate3d(*np.max(pkt_xyz, axis=0).tolist())
+    min_bound = Coordinate3d(*np.min(pkt_xyz, axis=0).tolist())
+    return aligned_catrace, min_bound, max_bound
 
 
 

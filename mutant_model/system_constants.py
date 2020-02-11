@@ -89,4 +89,4 @@ class GridPropertyLookup:
 
     @staticmethod
     def signature_grid_dim():
-        return 4, 4, 4
+        return 5, 5, 5

@@ -11,7 +11,7 @@ class NMATrajectoryHandler:
     def __init__(self,
                  min_coordinate,
                  max_coordinate,
-                 max_snapshot_sample=5):
+                 max_snapshot_sample=16):
         assert isinstance(max_coordinate, Coordinate3d)
         assert isinstance(min_coordinate, Coordinate3d)
         assert int(max_snapshot_sample) > 1
@@ -80,7 +80,7 @@ class NMATrajectoryHandler:
         return self.__max_coordinate
 
     @property
-    def min_coorinate(self):
+    def min_coordinate(self):
         return self.__min_coordinate
 
     def size(self, idx=None):

@@ -51,7 +51,7 @@ class Volume3D:
 
         self.__cx, self.__cy, self.__cz = center[0], center[1], center[2]
         self.__vfrac = np.zeros(self.length, dtype=np.float)
-        self.__logger = logging.getLogger('coarse_graining.Volume3D')
+        self.__logger = logging.getLogger(self.__class__.__name__)
 
     @property
     def size(self):

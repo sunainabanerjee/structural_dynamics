@@ -18,12 +18,18 @@ class XGBoost(Regressor):
                  booster='dart',
                  nthread=3,
                  max_depth=6,
-                 n_estimators=200,
+                 learning_rate=0.2,
+                 n_estimators=250,
+                 subsample=0.8,
+                 colsample_bytree=0.7,
                  objective=LossFunction.squared()):
         assert booster in XGBooster.supported_list()
         assert objective in LossFunction.supported_list(filter='xgb')
         assert (nthread > 1) and (max_depth > 1)
-        assert n_estimators > 10
+        assert learning_rate > 0
+        assert (subsample > 0) and (subsample <= 1)
+        assert (colsample_bytree > 0) and (colsample_bytree <= 1)
+        assert n_estimators >= 50
         self.__name = 'xgb'
         self.__input_dim = None
         self.__output_dim = None
@@ -31,8 +37,11 @@ class XGBoost(Regressor):
         self.__booster = booster
         self.__thread = int(nthread)
         self.__objective = objective
+        self.__lr = learning_rate
+        self.__subsample = subsample
         self.__nestimators = int(n_estimators)
         self.__max_depth = int(max_depth)
+        self.__colsample_bytree = colsample_bytree
         self.__logger = logging.getLogger(os.path.basename(__file__)[:-3])
 
     @property
@@ -58,15 +67,21 @@ class XGBoost(Regressor):
         assert (x.shape[0] == y.shape[0]) and (y.shape[1] > 0)
         if y.shape[1] == 1:
             self.__model = xgb.XGBRegressor(booster=self.__booster,
+                                            learning_rate=self.__lr,
                                             max_depth=self.__max_depth,
                                             n_estimators=self.__nestimators,
+                                            subsample=self.__subsample,
                                             objective=self.__objective,
+                                            colsample_bytree=self.__colsample_bytree,
                                             nthread=self.__thread)
         else:
             self.__model = MultiOutputRegressor(xgb.XGBRegressor(booster=self.__booster,
+                                                                 learning_rate=self.__lr,
                                                                  max_depth=self.__max_depth,
                                                                  n_estimators=self.__nestimators,
+                                                                 subsample=self.__subsample,
                                                                  objective=self.__objective,
+                                                                 colsample_bytree=self.__colsample_bytree,
                                                                  nthread=self.__thread))
         self.__input_dim = x.shape[1]
         self.__output_dim = y.shape[1]
@@ -80,7 +95,8 @@ class XGBoost(Regressor):
         assert self.is_set
         assert isinstance(x, np.ndarray)
         assert (len(x.shape) == 2)
-        return self.__model.predict(x)
+        res = self.__model.predict(x)
+        return res
 
     def save(self, file_path):
         assert self.is_set

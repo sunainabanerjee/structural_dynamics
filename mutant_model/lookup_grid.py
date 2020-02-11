@@ -163,6 +163,8 @@ class LookupGrid:
         return self
 
     def __next__(self):
+        if self.__cx > self.__max.x:
+            raise StopIteration
         cx, cy, cz = self.__cx, self.__cy, self.__cz
         if (self.__cz + self.__size[2]) < self.__max.z:
             self.__cz = self.__cz + self.__size[2]
@@ -172,8 +174,5 @@ class LookupGrid:
                 self.__cy = self.__cy + self.__size[1]
             else:
                 self.__cy = self.__min.y + 0.5 * self.__size[1]
-                if (self.__cx + self.__size[0]) < self.__max.x:
-                    self.__cx = self.__cx + self.__size[0]
-                else:
-                    raise StopIteration
+                self.__cx = self.__cx + self.__size[0]
         return cx, cy, cz

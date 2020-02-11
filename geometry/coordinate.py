@@ -11,6 +11,7 @@ class Coordinate3d:
         self._x = x
         self._y = y
         self._z = z
+        self._i = None
 
     def __str__(self):
         return '(%8.3f, %8.3f, %8.3f)' % (self._x, self._y, self._z)
@@ -59,6 +60,23 @@ class Coordinate3d:
     @property
     def values(self):
         return self._x, self._y, self._z
+
+    def __iter__(self):
+        self._i = 0
+        return self
+
+    def __next__(self):
+        if self._i > 2:
+            raise StopIteration
+        v = None
+        if self._i == 0:
+            v = self._x
+        elif self._i == 1:
+            v = self._y
+        else:
+            v = self._z
+        self._i = self._i + 1
+        return v
 
 
 def distance(c1, c2):
