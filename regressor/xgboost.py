@@ -22,7 +22,8 @@ class XGBoost(Regressor):
                  n_estimators=250,
                  subsample=0.8,
                  colsample_bytree=0.7,
-                 objective=LossFunction.squared()):
+                 objective=LossFunction.squared(),
+                 early_stopping_rounds=50):
         assert booster in XGBooster.supported_list()
         assert objective in LossFunction.supported_list(filter='xgb')
         assert (nthread > 1) and (max_depth > 1)
@@ -30,6 +31,7 @@ class XGBoost(Regressor):
         assert (subsample > 0) and (subsample <= 1)
         assert (colsample_bytree > 0) and (colsample_bytree <= 1)
         assert n_estimators >= 50
+        assert early_stopping_rounds > 0
         self.__name = 'xgb'
         self.__input_dim = None
         self.__output_dim = None
@@ -42,6 +44,7 @@ class XGBoost(Regressor):
         self.__nestimators = int(n_estimators)
         self.__max_depth = int(max_depth)
         self.__colsample_bytree = colsample_bytree
+        self.__early_stopping_rounds = int(early_stopping_rounds)
         self.__logger = logging.getLogger(os.path.basename(__file__)[:-3])
 
     @property
@@ -62,6 +65,8 @@ class XGBoost(Regressor):
 
     def fit(self, x, y, test_split=0.2):
         assert isinstance(x, np.ndarray) and isinstance(y, np.ndarray)
+        if len(y.shape) == 1:
+            y = y.reshape((y.shape[0], 1))
         assert (test_split > 0) and (test_split <= 0.5)
         assert (len(x.shape) == 2) and (len(y.shape) == 2)
         assert (x.shape[0] == y.shape[0]) and (y.shape[1] > 0)
@@ -86,7 +91,10 @@ class XGBoost(Regressor):
         self.__input_dim = x.shape[1]
         self.__output_dim = y.shape[1]
         x_train, x_test, y_train, y_test = train_test_split(x, y, test_size=test_split)
-        self.__model.fit(x_train, y_train)
+        if isinstance(self.__model, xgb.XGBRegressor):
+            self.__model.fit(x_train, y_train)
+        else:
+            self.__model.fit(x_train, y_train)
         accuracy = mean_absolute_error(y_test, self.predict(x_test))
         self.__logger.debug("Prediction Error: %.2f" % accuracy)
         return accuracy
@@ -108,6 +116,10 @@ class XGBoost(Regressor):
     def load(self, model_path):
         assert os.path.isfile(model_path)
         self.__model = pickle.load(open(model_path, "rb"))
+
+    def get_xgb_model(self):
+        assert isinstance(self.__model, xgb.XGBRegressor)
+        return self.__model
 
 
 
